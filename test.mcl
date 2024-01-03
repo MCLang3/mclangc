@@ -1,0 +1,13 @@
+
+
+fn main(a: int) {
+    let a = 0xFF;
+    let b = "Hello!";
+    let c = {
+        'E'
+    };
+
+    let d = 0o0431;
+    let e = 0b100101001;
+    let f = (true, false);
+}
