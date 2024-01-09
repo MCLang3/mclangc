@@ -51,7 +51,7 @@ pub enum PunctTyp {
 }
 
 impl PunctTyp {
-    pub fn from_iter(s: &mut crate::common::LocationalIterator) -> Option<Self> {
+    pub fn from_iter(s: &mut crate::LocationalIterator) -> Option<Self> {
         match s.peek() {
             Some(c) => {
                 match c {

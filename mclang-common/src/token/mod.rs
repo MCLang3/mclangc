@@ -8,8 +8,7 @@ pub use delimeter::*;
 pub use punctuation::*;
 pub use literal::*;
 
-use crate::common::Loc;
-use anyhow::Result;
+use crate::Loc;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum TokenType {

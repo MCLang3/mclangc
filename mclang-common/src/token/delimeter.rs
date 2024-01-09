@@ -10,7 +10,7 @@ pub enum DelimTyp {
 }
 
 impl DelimTyp {
-    pub fn from_iter(i: &mut crate::common::LocationalIterator) -> Option<Self> {
+    pub fn from_iter(i: &mut crate::LocationalIterator) -> Option<Self> {
         match i.peek() {
             Some(c) => {
                 match c {

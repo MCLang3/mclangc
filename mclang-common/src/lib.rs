@@ -1,7 +1,8 @@
 use std::iter::Peekable;
 pub mod token;
-#[macro_use]
 pub mod logger;
+#[macro_use]
+pub mod macros;
 
 #[derive(Debug, Clone, Default)]
 pub struct Loc{
