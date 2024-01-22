@@ -1,4 +1,4 @@
-use mclang_common::{token::{PunctTyp, Token, DelimTyp, TokenType, LiteralTyp, TokenData}, error};
+use mclang_common::{token::{Token, TokenType, try_into_kw, try_into_punct, try_into_delim}, error};
 
 
 #[derive(Debug, Clone)]
@@ -6,6 +6,17 @@ pub struct Tokeniser<'a> {
     code: &'a String,
     tokens: Vec<Token>,
     f_name: String
+}
+
+
+macro_rules! push_token {
+    ($self:expr, $ci:expr, $lexem:expr, $tt:expr) => {
+        $self.tokens.push(Token {
+            loc: $ci.loc(),
+            typ: $tt,
+            lexem: $lexem
+        });
+    };
 }
 
 
@@ -19,8 +30,7 @@ impl<'a> Tokeniser<'a> {
     }
 
     pub fn parse(&mut self) -> &mut Self {
-        let mut code_iter = self.code.chars().into_iter();
-        let mut code_iter = mclang_common::LocationalIterator::new(&mut code_iter, self.f_name.clone());
+        let mut code_iter = mclang_common::LocationalIterator::new(self.code.chars().collect(), self.f_name.clone());
 
         loop {
             let Some(c) = code_iter.peek() else {
@@ -52,18 +62,10 @@ impl<'a> Tokeniser<'a> {
                     }
                     
 
-                    if let Ok(kw) = buf.clone().try_into() {
-                        self.tokens.push(Token {
-                            loc: code_iter.loc(),
-                            typ: TokenType::Keyword,
-                            data: TokenData{ kw_typ: Some(kw), val: buf, lit_typ: None, punct_typ: None, delim_typ: None }
-                        })
+                    if let Some(kw) = try_into_kw(&buf) {
+                        push_token!(self, code_iter, buf, kw);
                     } else {
-                        self.tokens.push(Token {
-                            loc: code_iter.loc(),
-                            typ: TokenType::Ident,
-                            data: TokenData{ kw_typ: None, val: buf, lit_typ: None, punct_typ: None, delim_typ: None }
-                        })
+                        push_token!(self, code_iter, buf, TokenType::Ident { val: buf.clone() });
                     }
                 }
                 '-' | 
@@ -90,43 +92,13 @@ impl<'a> Tokeniser<'a> {
                     }
 
                     if let Ok(r) = parse_int::parse::<u64>(buf.as_str()) {
-                        self.tokens.push(Token {
-                            loc: code_iter.loc(),
-                            typ: TokenType::Literal,
-                            data: TokenData {
-                                val: buf,
-                                lit_typ: Some(LiteralTyp::UInt { val: r }),
-                                kw_typ: None,
-                                punct_typ: None,
-                                delim_typ: None,
-                            }
-                        })
+                        push_token!(self, code_iter, buf, TokenType::UInt { val: r });
                     } else
                     if let Ok(r) = parse_int::parse::<i64>(buf.as_str()) {
-                        self.tokens.push(Token {
-                            loc: code_iter.loc(),
-                            typ: TokenType::Literal,
-                            data: TokenData {
-                                val: buf,
-                                lit_typ: Some(LiteralTyp::Int { val: r }),
-                                kw_typ: None,
-                                punct_typ: None,
-                                delim_typ: None,
-                            }
-                        })
+                        push_token!(self, code_iter, buf, TokenType::Int {val: r});
                     } else
                     if let Ok(r) = parse_int::parse::<f64>(buf.as_str()) {
-                        self.tokens.push(Token {
-                            loc: code_iter.loc(),
-                            typ: TokenType::Literal,
-                            data: TokenData {
-                                val: buf,
-                                lit_typ: Some(LiteralTyp::Float { val: r }),
-                                kw_typ: None,
-                                punct_typ: None,
-                                delim_typ: None,
-                            }
-                        })
+                        push_token!(self, code_iter, buf, TokenType::Float { val: r });
                     }
                 }
                 
@@ -150,17 +122,7 @@ impl<'a> Tokeniser<'a> {
                         }
                     }
 
-                    self.tokens.push(Token{
-                        loc: code_iter.loc().clone(),
-                        typ: TokenType::Literal,
-                        data: TokenData { 
-                            val: buf.clone(),
-                            lit_typ: Some(LiteralTyp::String {val: buf}),
-                            kw_typ: None,
-                            punct_typ: None,
-                            delim_typ: None, 
-                        },
-                    })
+                    push_token!(self, code_iter, buf, TokenType::String { val: buf.clone() });
                 }
                 '\'' => {
                     let mut buf = String::new();
@@ -185,50 +147,17 @@ impl<'a> Tokeniser<'a> {
                     if buf.len() > 1 {
                         error!("Chars can only have 1 character");
                     }
-                    self.tokens.push(Token{
-                        loc: code_iter.loc().clone(),
-                        typ: TokenType::Literal,
-                        data: TokenData {
-                            val: buf.clone(),
-                            lit_typ: Some(LiteralTyp::Char {
-                                val: buf.chars().nth(0).unwrap()
-                            }),
-                            kw_typ: None,
-                            punct_typ: None,
-                            delim_typ: None,
-                        },
-                    })
+                    push_token!(self, code_iter, buf, TokenType::Char { val: buf.chars().nth(0).unwrap() });
                 }
                 ' ' | '\n' | '\t' | '\r' => {
                     let _ = code_iter.next();
                 },
-                c => {
-                    if let Some(typ) = PunctTyp::from_iter(&mut code_iter) {
-                        self.tokens.push(Token{
-                            loc: code_iter.loc().clone(),
-                            typ: TokenType::Punct,
-                            data: TokenData {
-                                val: String::from(c),
-                                kw_typ: None,
-                                lit_typ: None,
-                                punct_typ: Some(typ),
-                                delim_typ: None
-                            },
-                        }
-                    )
+                _ => {
+                    if let Some(typ) = try_into_punct(&mut code_iter) {
+                        push_token!(self, code_iter, typ.to_string(), typ.clone());
                     }
-                    if let Some(typ) = DelimTyp::from_iter(&mut code_iter) {
-                        self.tokens.push(Token{
-                            loc: code_iter.loc().clone(),
-                            typ: TokenType::Delim,
-                            data: TokenData {
-                                val: String::from(c),
-                                kw_typ: None,
-                                lit_typ: None,
-                                punct_typ: None,
-                                delim_typ: Some(typ)
-                            },
-                        })
+                    if let Some(typ) = try_into_delim(&mut code_iter) {
+                        push_token!(self, code_iter, typ.to_string(), typ.clone());
                     }
                 }
             }
@@ -240,3 +169,5 @@ impl<'a> Tokeniser<'a> {
         self.tokens.clone()
     }
 }
+
+

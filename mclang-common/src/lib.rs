@@ -1,14 +1,26 @@
-use std::iter::Peekable;
+
+use token::{TokenType, Token};
 pub mod token;
 pub mod logger;
 #[macro_use]
 pub mod macros;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Loc{
     pub file: String,
     pub line: usize,
     pub col:  usize
+}
+
+// For mclang_parser
+impl From<Option<&Token>> for Loc {
+    fn from(val: Option<&Token>) -> Self {
+        if let Some(t) = val {
+            t.loc.clone()
+        } else {
+            Loc::default()
+        }
+    }
 }
 
 impl Loc {
@@ -25,34 +37,53 @@ impl Loc {
     }
 }
 
-pub struct LocationalIterator<'a>{
-    iter: Peekable<&'a mut dyn Iterator<Item=char>>,
+pub struct LocationalIterator{
+    // iter: Peekable<&'a mut dyn Iterator<char=char>>,
+    chars: Vec<char>,
     loc: Loc
 }
 
-impl<'a> LocationalIterator<'a> {
-    pub fn new(iter: &'a mut dyn Iterator<Item=char>, f_name: String) -> Self{
+// impl<char> Clone for LocationalIterator<char> {
+//     fn clone(&self) -> Self {
+
+//         // This is nasty, and extremely slow
+//         // let chrs = String::from_utf8(self.iter.map(|c| c as u8 ).collect::<Vec<u8>>().clone()).unwrap().chars();
+
+
+//         // Probably safe as were copying to the same type
+//         unsafe {
+//             Self { iter: std::mem::transmute_copy(&self.iter), loc: self.loc.clone() }
+//         }
+//     }
+// }
+
+// impl<char> Debug for LocationalIterator<char> {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         f.debug_struct("LocationalIterator").field("iter", &"[excluded]").field("loc", &self.loc).finish()
+//     }
+// }
+
+impl<'a> LocationalIterator {
+    pub fn new(arr: Vec<char>, f_name: String) -> Self{
         Self {
-            iter: iter.peekable(),
+            chars: arr,
             loc: Loc::new(f_name),
         }
     }
 
     pub fn peek(&mut self) -> Option<&char> {
-        let a = self.iter.peek();
-        a
+        self.chars.last()
     }
 
     #[allow(dead_code)]
     pub fn peek_mut(&mut self) -> Option<&mut char> {
-        let a = self.iter.peek_mut();
-        a
+        self.chars.last_mut()
     }
 
     pub fn next(&mut self) -> Option<char> {
-        let a = self.iter.next();
+        let a = self.chars.pop();
         if let Some(a) = a {
-            match a {
+            match a.into() {
                 '\n' => {
                     self.loc.line += 1;
                     self.loc.col = 1;
@@ -61,8 +92,8 @@ impl<'a> LocationalIterator<'a> {
                     self.loc.col += 1;
                 }
             }
-        };
-        a
+        }
+        a.clone()
     }
     pub fn loc(&mut self) -> Loc {
         self.loc.clone()

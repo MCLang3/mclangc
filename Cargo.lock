@@ -153,6 +153,11 @@ dependencies = [
 [[package]]
 name = "mclang-parser"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "mclang-ast",
+ "mclang-common",
+]
 
 [[package]]
 name = "num-traits"

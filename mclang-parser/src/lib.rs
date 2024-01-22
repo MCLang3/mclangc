@@ -1,242 +1,93 @@
-use crate::common::token::{PunctTyp, Token, DelimTyp, TokenType, LiteralTyp, TokenData};
+use mclang_ast::{statement::{Block, Stat}, Ident};
+use mclang_common::{token::{Token, TokenType}, Loc};
+use util::{TokenIter, PeekableIterator};
+mod util;
+
+type Result<T> = anyhow::Result<T, (Loc, &'static str)>;
 
 
-#[derive(Debug, Clone)]
-pub struct Tokeniser<'a> {
-    code: &'a String,
-    tokens: Vec<Token>,
-    f_name: String
+fn tok_typ(t: &Token) -> TokenType {
+    t.typ.clone()
 }
 
 
-impl<'a> Tokeniser<'a> {
-    pub fn new(code: &'a String, f_name: String) -> Self {
-        Self {
-            code,
-            tokens: Vec::new(),
-            f_name
-        }
+pub fn parse(tokens: &Vec<mclang_common::token::Token>) {
+    let mut tokens = util::TokenIter::new(tokens);
+
+
+
+}
+
+
+pub fn parse_block(tokens: &TokenIter<'_, Token>) -> Result<mclang_ast::statement::Block> {
+    let mut stats = vec![];
+    while let Ok(stat) = parse_stat(tokens) {
+        stats.push(stat);
     }
+    // let retstat = parse_retstat(tokens).unwrap_or_default();
+    Ok(Block { stats, retstat })
+}
 
-    pub fn parse(&mut self) -> &mut Self {
-        let mut code_iter = self.code.chars().into_iter();
-        let mut code_iter = crate::common::LocationalIterator::new(&mut code_iter, self.f_name.clone());
 
-        loop {
-            let Some(c) = code_iter.peek() else {
-                break self;
-            };
-            let c = c.clone();
-            match c {
-                'a'..='z' |
-                'A'..='Z' | '_' => {
-                    let mut buf: String = String::new();
-
-                    loop {
-                        if let Some(c) = code_iter.peek() {
-                            match c {
-                                '0'..='9' |
-                                'a'..='z' |
-                                'A'..='Z' |
-                                '_' => {
-                                    buf.push(*c);
-                                    let _ = code_iter.next();
-                                }
-                                _ => {
-                                    break;
-                                }
-                            }
-                        } else {
-                            break;
-                        }
-                    }
-                    
-
-                    if let Ok(kw) = buf.clone().try_into() {
-                        self.tokens.push(Token {
-                            loc: code_iter.loc(),
-                            typ: TokenType::Keyword,
-                            data: TokenData{ kw_typ: Some(kw), val: buf, lit_typ: None, punct_typ: None, delim_typ: None }
-                        })
-                    } else {
-                        self.tokens.push(Token {
-                            loc: code_iter.loc(),
-                            typ: TokenType::Ident,
-                            data: TokenData{ kw_typ: None, val: buf, lit_typ: None, punct_typ: None, delim_typ: None }
-                        })
-                    }
-                }
-                '-' | 
-                '0'..='9' => {
-                    let mut buf: String = String::new();
-
-                    loop {
-                        if let Some(c) = code_iter.peek() {
-                            match c {
-                                '0'..='9' |
-                                'a'..='f' |
-                                'A'..='F' |
-                                'o' | 'x' | '.' => {
-                                    buf.push(*c);
-                                    let _ = code_iter.next();
-                                }
-                                _ => {
-                                    break;
-                                }
-                            }
-                        } else {
-                            break;
-                        }
-                    }
-
-                    if let Ok(r) = parse_int::parse::<u64>(buf.as_str()) {
-                        self.tokens.push(Token {
-                            loc: code_iter.loc(),
-                            typ: TokenType::Literal,
-                            data: TokenData {
-                                val: buf,
-                                lit_typ: Some(LiteralTyp::UInt { val: r }),
-                                kw_typ: None,
-                                punct_typ: None,
-                                delim_typ: None,
-                            }
-                        })
-                    } else
-                    if let Ok(r) = parse_int::parse::<i64>(buf.as_str()) {
-                        self.tokens.push(Token {
-                            loc: code_iter.loc(),
-                            typ: TokenType::Literal,
-                            data: TokenData {
-                                val: buf,
-                                lit_typ: Some(LiteralTyp::Int { val: r }),
-                                kw_typ: None,
-                                punct_typ: None,
-                                delim_typ: None,
-                            }
-                        })
-                    } else
-                    if let Ok(r) = parse_int::parse::<f64>(buf.as_str()) {
-                        self.tokens.push(Token {
-                            loc: code_iter.loc(),
-                            typ: TokenType::Literal,
-                            data: TokenData {
-                                val: buf,
-                                lit_typ: Some(LiteralTyp::Float { val: r }),
-                                kw_typ: None,
-                                punct_typ: None,
-                                delim_typ: None,
-                            }
-                        })
-                    }
-                }
-                
-                '"' => {
-                    let mut buf = String::new();
-                    let mut prev = '\0';
-                    let _ = code_iter.next();
-                    loop {
-                        if let Some(c) = code_iter.peek() {
-                            if prev != '\\' && *c == '"'{
-                                let _ = code_iter.next();
-                                break;
-                            } else
-                            if prev == '\\' && *c == '\\' {
-                                buf.push('\\');
-                            } else {
-                                buf.push(*c);
-                            }
-                            prev = *c;
-                            let _ = code_iter.next();
-                        }
-                    }
-
-                    self.tokens.push(Token{
-                        loc: code_iter.loc().clone(),
-                        typ: TokenType::Literal,
-                        data: TokenData { 
-                            val: buf.clone(),
-                            lit_typ: Some(LiteralTyp::String {val: buf}),
-                            kw_typ: None,
-                            punct_typ: None,
-                            delim_typ: None, 
-                        },
-                    })
-                }
-                '\'' => {
-                    let mut buf = String::new();
-                    let mut prev = '\0';
-                    let _ = code_iter.next();
-                    loop {
-                        if let Some(c) = code_iter.peek() {
-                            if prev != '\\' && *c == '\''{
-                                let _ = code_iter.next();
-                                break;
-                            } else
-                            if prev == '\\' && *c == '\\' {
-                                buf.push('\\');
-                            } else {
-                                buf.push(*c);
-                            }
-                            prev = *c;
-                            let _ = code_iter.next();
-                        }
-                    }
-
-                    if buf.len() > 1 {
-                        error!("Chars can only have 1 character");
-                    }
-                    self.tokens.push(Token{
-                        loc: code_iter.loc().clone(),
-                        typ: TokenType::Literal,
-                        data: TokenData {
-                            val: buf.clone(),
-                            lit_typ: Some(LiteralTyp::Char {
-                                val: buf.chars().nth(0).unwrap()
-                            }),
-                            kw_typ: None,
-                            punct_typ: None,
-                            delim_typ: None,
-                        },
-                    })
-                }
-                ' ' | '\n' | '\t' | '\r' => {
-                    let _ = code_iter.next();
-                },
-                c => {
-                    if let Some(typ) = PunctTyp::from_iter(&mut code_iter) {
-                        self.tokens.push(Token{
-                            loc: code_iter.loc().clone(),
-                            typ: TokenType::Punct,
-                            data: TokenData {
-                                val: String::from(c),
-                                kw_typ: None,
-                                lit_typ: None,
-                                punct_typ: Some(typ),
-                                delim_typ: None
-                            },
-                        }
-                    )
-                    }
-                    if let Some(typ) = DelimTyp::from_iter(&mut code_iter) {
-                        self.tokens.push(Token{
-                            loc: code_iter.loc().clone(),
-                            typ: TokenType::Delim,
-                            data: TokenData {
-                                val: String::from(c),
-                                kw_typ: None,
-                                lit_typ: None,
-                                punct_typ: None,
-                                delim_typ: Some(typ)
-                            },
-                        })
-                    }
-                }
+pub fn parse_stat(tokens: &TokenIter<'_, Token>) -> Result<mclang_ast::statement::Stat> {
+    match tokens.peek().map(tok_typ) {
+        Some(TokenType::Semi) => {
+            tokens.next();
+            Ok(Stat::SemiColon)
+        }
+        Some(TokenType::PathSep) => parse_label(tokens).map(Stat::Label),
+        Some(TokenType::Break) => {
+            tokens.next();
+            Ok(Stat::Break)
+        }
+        Some(TokenType::Goto) => {
+            let cur = tokens.next();
+            if let Some(TokenType::Ident{ val: name}) = tokens.next().map(tok_typ) {
+                Ok(Stat::Goto(Ident(name.to_string())))
+            } else {
+                Err((cur.into(), "Invalid goto statement"))
             }
         }
-        
-    }
-
-    pub fn tokens(&self) -> Vec<Token> {
-        self.tokens.clone()
+        Some(TokenType::While) => parse_while_block(tokens).map(Stat::WhileBlock),
+        Some(TokenType::Loop) => parse_loop_block(tokens).map(Stat::LoopBlock),
+        Some(TokenType::If) => parse_if_block(tokens).map(|f| Stat::IfBlock(Box::new(f))),
+        Some(TokenType::For) => {
+            tokens.next();
+            tokens.next();
+            if let Some(TokenType::Assign) = tokens.peek().map(to_kind) {
+                tokens.prev();
+                tokens.prev();
+                parse_for_range(tokens).map(|f| Stat::ForRange(Box::new(f)))
+            } else {
+                tokens.prev();
+                tokens.prev();
+                parse_for_in(tokens).map(Stat::ForIn)
+            }
+        }
+        Some(TokenType::Function) => parse_function_def(tokens).map(Stat::FunctionDef),
+        Some(TokenType::Local) => {
+            tokens.next();
+            if let Some(TokenType::Function) = tokens.peek().map(to_kind) {
+                tokens.prev();
+                parse_local_function_def(tokens).map(Stat::LocalFunctionDef)
+            } else {
+                tokens.prev();
+                parse_local_assignment(tokens).map(Stat::LocalAssignment)
+            }
+        }
+        Some(TokenType::Ident(ident)) => {
+            tokens.next();
+            if let Some(TokenType::LParen) = tokens.peek().map(to_kind) {
+                Ok(Stat::FunctionCall(FunctionCall {
+                    expr: Box::new(PrefixExpr::Var(Var::Name(Name(ident.to_string())))),
+                    args: parse_args(tokens)?,
+                }))
+            } else {
+                tokens.prev();
+                parse_assignment(tokens).map(Stat::Assignment)
+            }
+        }
+        _ => Err(()),
     }
 }
+

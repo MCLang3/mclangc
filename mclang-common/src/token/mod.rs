@@ -1,111 +1,462 @@
 
-mod keyword;
-mod delimeter;
-mod punctuation;
-mod literal;
-pub use keyword::*;
-pub use delimeter::*;
-pub use punctuation::*;
-pub use literal::*;
-
 use crate::Loc;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum TokenType {
-    Ident,
-    Keyword,
-    Literal,
-    Punct,
-    Delim,
+    Ident {val: String},
+    // Keyword
+    Let, If, Else, Const, Fn, Struct, Type,
+    Include, Pub, Enum, Loop, While, For, 
+    Return, Self_, True, False, Break, Goto,
+
+    // Delim
+    CurlyOpen,   // {
+    CurlyClose,  // }
+    SquareOpen,  // [
+    SquareClose, // ]
+    ParenOpen,   // (
+    ParenClose,   // )
+
+    // Literals
+    String {val: String},
+    Char {val: char},
+    Int {val: i64},
+    UInt {val: u64},
+    Float {val: f64},
+
+    // Punct
+    Plus,       // +
+    Minus,      // -
+    Star,       // *
+    Slash,      // /
+    Percent,    // %
+    Caret,      // ^
+    Not,        // !
+    And,        // &
+    Or,         // |
+    AndAnd,     // &&
+    OrOr,       // ||
+    Shl,        // <<
+    Shr,        // >>
+    PlusEq,     // +=
+    MinusEq,    // -=
+    StarEq,     // *=
+    SlashEq,    // /=
+    PercentEq,  // %=
+    CaretEq,    // ^=
+    AndEq,      // &=
+    OrEq,       // |=
+    ShlEq,      // <<=
+    ShrEq,      // >>=
+    Eq,         // =
+    EqEq,       // ==
+    Ne,         // !=
+    Gt,         // >
+    Lt,         // <
+    Ge,         // >=
+    Le,         // <=
+    At,         // @
+    Underscore, // _
+    Dot,        // .
+    DotDot,     // ..
+    DotDotDot,  // ...
+    DotDotEq,   // ..=
+    Comma,      // ,
+    Semi,       // ;
+    Colon,      // :
+    PathSep,    // ::
+    RArrow,     // ->
+    FatArrow,   // =>
+    Pound,      // #
+    Dollar,     // $
+    Question,   // ?
+    Tilde,      // ~
 }
 
 
-#[derive(Debug, Clone, Default)]
-pub struct TokenData {
-    pub val: String,
-    pub kw_typ: Option<KeywordType>,
-    pub lit_typ: Option<LiteralTyp>,
-    pub punct_typ: Option<PunctTyp>,
-    pub delim_typ: Option<DelimTyp>
-}
 
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub loc: Loc,
     pub typ: TokenType,
-    pub data: TokenData,
+    pub lexem: String,
 }
 
 
 
-// impl ToString for TokenType {
-//     fn to_string(&self) -> String {
-//         match &self {
-//             TokenType::Ident { val } => val.clone(),
-//             TokenType::Keyword { typ } => typ.to_string(),
-//             TokenType::Literal { val: _, typ } => typ.to_string(),
-//             TokenType::Punct { typ } => typ.to_string(),
-//             TokenType::Delim { typ } => typ.to_string(),
-//         }
-//     }
-// }
 
-// impl Token {
-//     pub fn eq_parser(self, r: Token) -> bool {
-//         match self {
-//             s if s.typ == r.typ => {
-//                 true
-//             },
-//             s => {
-                
-//             }
-//         }
-//     }
-// }
-
-impl std::fmt::Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match &self.typ {
-            TokenType::Ident  => format!("Identifier(\"{}\")", self.data.val.clone()),
-            TokenType::Keyword  => self.data.kw_typ.unwrap().to_string(),
-            TokenType::Literal => self.data.clone().lit_typ.unwrap().to_string(),
-            TokenType::Punct => self.data.punct_typ.unwrap().to_string(),
-            TokenType::Delim => self.data.delim_typ.unwrap().to_string(),
-        };
-        write!(f, "{}", s)?;
-        Ok(())
+impl ToString for TokenType {
+    fn to_string(&self) -> String {
+        match self {
+            TokenType::CurlyOpen    => String::from("{"),
+            TokenType::CurlyClose   => String::from("}"),
+            TokenType::SquareOpen   => String::from("["),
+            TokenType::SquareClose  => String::from("]"),
+            TokenType::ParenOpen    => String::from("("),
+            TokenType::ParenClose   => String::from(")"),
+            TokenType::Plus         => String::from("+"),
+            TokenType::Minus        => String::from("-"),
+            TokenType::Star         => String::from("*"),
+            TokenType::Slash        => String::from("/"),
+            TokenType::Percent      => String::from("%"),
+            TokenType::Caret        => String::from("^"),
+            TokenType::Not          => String::from("!"),
+            TokenType::And          => String::from("&"),
+            TokenType::Or           => String::from("|"),
+            TokenType::AndAnd       => String::from("&&"),
+            TokenType::OrOr         => String::from("||"),
+            TokenType::Shl          => String::from("<<"),
+            TokenType::Shr          => String::from(">>"),
+            TokenType::PlusEq       => String::from("+="),
+            TokenType::MinusEq      => String::from("-="),
+            TokenType::StarEq       => String::from("*="),
+            TokenType::SlashEq      => String::from("/="),
+            TokenType::PercentEq    => String::from("%="),
+            TokenType::CaretEq      => String::from("^="),
+            TokenType::AndEq        => String::from("&="),
+            TokenType::OrEq         => String::from("|="),
+            TokenType::ShlEq        => String::from("<<="),
+            TokenType::ShrEq        => String::from(">>="),
+            TokenType::Eq           => String::from("="),
+            TokenType::EqEq         => String::from("=="),
+            TokenType::Ne           => String::from("!="),
+            TokenType::Gt           => String::from(">"),
+            TokenType::Lt           => String::from("<"),
+            TokenType::Ge           => String::from(">="),
+            TokenType::Le           => String::from("<="),
+            TokenType::At           => String::from("@"),
+            TokenType::Underscore   => String::from("_"),
+            TokenType::Dot          => String::from("."),
+            TokenType::DotDot       => String::from(".."),
+            TokenType::DotDotDot    => String::from("..."),
+            TokenType::DotDotEq     => String::from("..="),
+            TokenType::Comma        => String::from(","),
+            TokenType::Semi         => String::from(";"),
+            TokenType::Colon        => String::from(":"),
+            TokenType::PathSep      => String::from("::"),
+            TokenType::RArrow       => String::from("->"),
+            TokenType::FatArrow     => String::from("=>"),
+            TokenType::Pound        => String::from("#"),
+            TokenType::Dollar       => String::from("$"),
+            TokenType::Question     => String::from("?"),
+            TokenType::Tilde        => String::from("~"),
+            TokenType::Let          => String::from("let"),
+            TokenType::If           => String::from("if"),
+            TokenType::Else         => String::from("else"),
+            TokenType::Const        => String::from("const"),
+            TokenType::Fn           => String::from("fn"),
+            TokenType::Struct       => String::from("struct"),
+            TokenType::Type         => String::from("type"),
+            TokenType::Include      => String::from("include"),
+            TokenType::Pub          => String::from("pub"),
+            TokenType::Enum         => String::from("enum"),
+            TokenType::Loop         => String::from("loop"),
+            TokenType::While        => String::from("while"),
+            TokenType::For          => String::from("for"),
+            TokenType::Return       => String::from("return"),
+            TokenType::Self_        => String::from("Self"),
+            TokenType::True         => String::from("true"),
+            TokenType::False        => String::from("false"),
+            TokenType::Break        => String::from("break"),
+            TokenType::Goto        => String::from("goto"),
+            TokenType::String { val } => format!("String({:?})", val),
+            TokenType::Char   { val } => format!("Char('{}')", val),
+            TokenType::Int    { val } => format!("Int({})", val),
+            TokenType::UInt   { val } => format!("UInt({})", val),
+            TokenType::Float  { val } => format!("Float({})", val),
+            TokenType::Ident  { val } => format!("Ident({})", val),
+        }.to_string()
     }
 }
-impl TokenType {
-    pub fn fmt(&self, data: &Option<TokenData>) -> String  {
-        match data {
-            Some(data) => {
-                match &self {
-                    TokenType::Ident  => format!("Identifier(\"{}\")", data.val.clone()),
-                    TokenType::Keyword  => data.kw_typ.unwrap().to_string(),
-                    TokenType::Literal => data.lit_typ.clone().unwrap().to_string(),
-                    TokenType::Punct => data.punct_typ.unwrap().to_string(),
-                    TokenType::Delim => data.delim_typ.unwrap().to_string(),
-                }
-            }
 
-            None => {
-                match &self {
-                    TokenType::Ident  => String::from("Ident"),
-                    TokenType::Keyword  => String::from("Keyword"),
-                    TokenType::Literal =>  String::from("Literal"),
-                    TokenType::Punct =>  String::from("Punct"),
-                    TokenType::Delim =>  String::from("Delim"),
+
+pub fn try_into_kw(s: &str) -> Option<TokenType> {
+    match s {
+        "let"     => Some(TokenType::Let),
+        "if"      => Some(TokenType::If),
+        "else"    => Some(TokenType::Else),
+        "const"   => Some(TokenType::Const),
+        "fn"      => Some(TokenType::Fn),
+        "struct"  => Some(TokenType::Struct),
+        "type"    => Some(TokenType::Type),
+        "include" => Some(TokenType::Include),
+        "pub"     => Some(TokenType::Pub),
+        "enum"    => Some(TokenType::Enum),
+        "loop"    => Some(TokenType::Loop),
+        "while"   => Some(TokenType::While),
+        "for"     => Some(TokenType::For ),
+        "return"  => Some(TokenType::Return),
+        "Self"    => Some(TokenType::Self_),
+        "true"    => Some(TokenType::True),
+        "false"   => Some(TokenType::False),
+        "break"   => Some(TokenType::Break),
+        "goto"    => Some(TokenType::Goto),
+        _ => None
+    }
+}
+
+pub fn try_into_delim(i: &mut crate::LocationalIterator) -> Option<TokenType> {
+    match i.peek() {
+        Some(c) => {
+            match c {
+                '{' => {
+                    let _ = i.next();
+                    Some(TokenType::CurlyOpen)
                 }
+                '}' => {
+                    let _ = i.next();
+                    Some(TokenType::CurlyClose)
+                }
+                '[' => {
+                    let _ = i.next();
+                    Some(TokenType::SquareOpen)
+                }
+                ']' => {
+                    let _ = i.next();
+                    Some(TokenType::SquareClose)
+                }
+                '(' => {
+                    let _ = i.next();
+                    Some(TokenType::ParenOpen)
+                }
+                ')' => {
+                    let _ = i.next();
+                    Some(TokenType::ParenClose)
+                }
+                _ => None
             }
+        }
+        _ => None
+    }
+}
+
+pub fn try_into_punct(s: &mut crate::LocationalIterator) -> Option<TokenType> {
+    match s.peek() {
+        Some(c) => {
+            match c {
+                '@' => {
+                    let _ = s.next();
+                    Some(TokenType::At)
+                }
+                '_' => {
+                    let _ = s.next();
+                    Some(TokenType::Underscore)
+                }
+                ',' => {
+                    let _ = s.next();
+                    Some(TokenType::Comma)
+                }
+                ';' => {
+                    let _ = s.next();
+                    Some(TokenType::Semi)
+                }
+                '#' => {
+                    let _ = s.next();
+                    Some(TokenType::Pound)
+                }
+                '$' => {
+                    let _ = s.next();
+                    Some(TokenType::Dollar)
+                }
+                '?' => {
+                    let _ = s.next();
+                    Some(TokenType::Question)
+                }
+                '~' => {
+                    let _ = s.next();
+                    Some(TokenType::Tilde)
+                }
+                '+' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::PlusEq)
+                        }
+                        _ => Some(TokenType::Plus)
+                    }
+                }
+                '-' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::MinusEq)
+                        }
+                        Some('>') => {
+                            let _ = s.next();
+                            Some(TokenType::RArrow)
+                        }
+                        _ => Some(TokenType::Minus)
+                    }
+                }
+                '*' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::StarEq)
+                        }
+                        _ => Some(TokenType::Star)
+                    }
+                }
+                '/' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::SlashEq)
+                        }
+                        _ => Some(TokenType::Slash)
+                    }
+                }
+                '%' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::PercentEq)
+                        }
+                        _ => Some(TokenType::Percent)
+                    }
+                }
+                '^' => {
+                    match s.peek() {
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::CaretEq)
+                        }
+                        _ => Some(TokenType::Caret)
+                    }
+                }
+                '!' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::Ne)
+                        }
+                        _ => Some(TokenType::Not)
+                    }
+                }
+                '&' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('&') => {
+                            let _ = s.next();
+                            Some(TokenType::AndAnd)
+                        }
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::AndEq)
+                        }
+                        _ => Some(TokenType::And)
+                    }
+                }
+                '|' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('|') => {
+                            let _ = s.next();
+                            Some(TokenType::OrOr)
+                        }
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::OrEq)
+                        }
+                        _ => Some(TokenType::Or)
+                    }
+                }
+                '<' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('<') => {
+                            let _ = s.next();
+                            match s.peek() {
+                                Some('=') => {
+                                    let _ = s.next();
+                                    Some(TokenType::ShlEq)
+                                }
+                                _ => Some(TokenType::Shl)
+                            }
+                        },
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::Le)
+                        },
+                        _ => Some(TokenType::Lt)
+                    }
+                }
+                '>' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('>') => {
+                            let _ = s.next();
+                            match s.peek() {
+                                Some('=') => {
+                                    let _ = s.next();
+                                    Some(TokenType::ShrEq)
+                                }
+                                _ => Some(TokenType::Shr)
+                            }
+                        },
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::Ge)
+                        },
+                        _ => Some(TokenType::Gt)
+                    }
+                }
+                '=' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('=') => {
+                            let _ = s.next();
+                            Some(TokenType::EqEq)
+                        }
+                        Some('>') => {
+                            let _ = s.next();
+                            Some(TokenType::FatArrow)
+                        }
+                        _ => Some(TokenType::Eq)
+                    }
+                }
+                ':' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some(':') => {
+                            let _ = s.next();
+                            Some(TokenType::PathSep)
+                        }
+                        _ => Some(TokenType::Colon)
+                    }
+                },
+                '.' => {
+                    let _ = s.next();
+                    match s.peek() {
+                        Some('.') => {
+                            let _ = s.next();
+                            match s.peek() {
+                                Some('.') => {
+                                    let _ = s.next();
+                                    Some(TokenType::DotDotDot)
+                                }
+                                Some('=') => {
+                                    let _ = s.next();
+                                    Some(TokenType::DotDotEq)
+                                }
+                                _ => Some(TokenType::DotDot)
+                            }
+                        }
+                        _ => Some(TokenType::Dot)
+                    }
+                }
+
+                _ => None
+            }
+        }
+        None => {
+            None
         }
     }
 }
-
-// impl ToString for Token {
-//     fn to_string(&self) -> String {
-//         self.typ.to_string()
-//     }
-// }
-
